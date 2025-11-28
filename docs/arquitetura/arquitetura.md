@@ -1,119 +1,83 @@
-# Arquitetura do Projeto
+# Arquitetura do Projeto LyriX
 
 ## Introdução
 
-Na construção de aplicativos móveis, a **arquitetura** é um dos fatores mais importantes para garantir que o sistema seja **escalável, testável, de fácil manutenção e evolutivo**.  
+A arquitetura do LyriX foi projetada para ser **híbrida e distribuída**. O sistema não depende exclusivamente de um banco de dados local para o conteúdo musical, mas sim da integração com serviços de terceiros (Spotify) para a descoberta de conteúdo, utilizando o backend proprietário apenas para personalização (favoritos e histórico).
 
-Existem diferentes abordagens utilizadas no desenvolvimento de apps Android e servidores backend, como:
-
-- **Arquitetura em camadas simples (MVC)**: onde a interface de usuário, lógica de negócio e acesso a dados estão mais acoplados. Apesar de fácil de implementar, tende a gerar problemas de manutenção em projetos maiores.  
-- **MVP (Model–View–Presenter)**: separa a lógica de apresentação da UI, mas ainda pode gerar acoplamento em cenários complexos.  
-- **MVVM (Model–View–ViewModel)**: modelo amplamente utilizado em conjunto com as bibliotecas do Jetpack. Facilita a separação entre a camada de interface (View) e a lógica de apresentação (ViewModel), permitindo uma melhor testabilidade.  
-- **Clean Architecture**: proposta por Robert C. Martin (Uncle Bob), organiza o software em camadas concêntricas, onde as regras de negócio ficam isoladas das implementações de frameworks. Essa abordagem garante independência, baixo acoplamento e alta manutenibilidade.  
+Diferente de arquiteturas monolíticas tradicionais, o LyriX opera em um modelo onde o **Frontend (Android)** orquestra chamadas entre duas APIs distintas.
 
 ---
 
 ## Arquitetura Escolhida
 
-Neste projeto, foi adotada uma combinação entre:  
+O projeto adota a seguinte estrutura tecnológica:
 
-- **Clean Architecture + MVVM no aplicativo mobile**, utilizando **Jetpack Compose** para a interface de usuário.  
-- **Ktor no backend**, com **documentação de API via Swagger/OpenAPI**, banco de dados **MySQL dockerizado** e serviços REST.  
-
-Essa escolha foi feita para garantir:  
-
-- **Separação de responsabilidades** clara entre UI, lógica de negócio, dados e backend.  
-- **Testabilidade** (use cases e ViewModels no app, e rotas no backend podem ser testadas isoladamente).  
-- **Escalabilidade**, permitindo adicionar novas features sem comprometer o código existente.  
-- **Adoção de tecnologias modernas** do ecossistema Android e Kotlin (Compose, Hilt, Coroutines, Flow, Room, Retrofit, Ktor).  
+- **Frontend:** Android Nativo com sistema de **Views (XML)**. A escolha por XML garante compatibilidade e facilidade de implementação para a estrutura atual de Activities.
+- **Backend:** **Spring Boot** (Kotlin) com arquitetura em camadas (Controller-Service-Repository).
+- **Banco de Dados:** **MySQL 8** rodando em container Docker.
+- **Integração Externa:** **Spotify Web API** para busca de metadados e **Spotify Auth SDK** para autenticação OAuth 2.0.
 
 ---
 
-## Estrutura em Camadas (Mobile)
+## Estrutura do Aplicativo Android
 
-A arquitetura do **aplicativo Android** é dividida em três camadas principais, alinhadas com Clean Architecture:
+O aplicativo segue uma arquitetura baseada em **Componentes de UI e Serviços de Rede**:
 
-### 1. **Camada de Apresentação (Presentation)**
+### 1. Camada de UI (User Interface)
+- Responsável pela interação com o usuário.
+- Implementada via **Activities** (`MainActivity`, `BuscaActivity`) e layouts **XML**.
+- Gerencia o fluxo de navegação e exibição de dados (RecyclerViews).
 
-- Responsável pela interface gráfica (UI).  
-- Implementada com **Jetpack Compose**.  
-- Usa o padrão **MVVM** com `ViewModel` para gerenciar estado e lógica de apresentação.  
-- Comunicação assíncrona com os casos de uso (UseCases) via **Coroutines e Flow**.  
+### 2. Camada de Rede (Network Layer)
+- Implementada com **Retrofit 2**.
+- Possui dois clientes HTTP distintos:
+    - `SpotifyApi`: Responsável por buscar músicas e capas de álbuns na nuvem.
+    - `LyrixApi`: Responsável por salvar favoritos e histórico no servidor local (Spring Boot).
 
-### 2. **Camada de Domínio (Domain)**
-
-- Contém as **regras de negócio** e **casos de uso (UseCases)**.  
-- Define **interfaces de repositório** para abstrair fontes de dados.  
-- Independente de frameworks, garante que o domínio não dependa de detalhes de implementação.  
-
-### 3. **Camada de Dados (Data)**
-
-- Implementa os repositórios definidos no domínio.  
-- Contém:  
-  - **Remote Data Source** (ex.: Retrofit + API REST via Ktor).  
-  - **Local Data Source** (ex.: Room Database).  
-- Faz a conversão de modelos (DTOs ↔ Entities ↔ Domain Models).  
+### 3. Camada de Modelo (Data Models)
+- Classes de dados (Data Classes) que mapeiam as respostas JSON tanto do Spotify quanto da API LyriX.
 
 ---
 
-## Arquitetura do Backend (Ktor)
+## Arquitetura do Backend (Spring Boot)
 
-O **backend** será responsável por fornecer os dados de letras de músicas, artistas, traduções e funcionalidades extras ao app.  
+O backend atua como uma **API RESTful** de persistência e personalização.
 
-### Estrutura
+### Estrutura em Camadas
 
-**Ktor Application**  
-   - Contém as rotas (endpoints REST).  
-   - Configurações de autenticação, logging e serialização.  
+**1. Controllers (Camada Web)**
+   - Expõe os endpoints REST (ex: `POST /favoritos`, `GET /musicas`).
+   - Gerencia os códigos de resposta HTTP e validação básica de entrada (DTOs).
 
-**Camada de Domínio (UseCases/Services)**  
-   - Contém as regras de negócio do backend.  
-   - Define contratos de repositórios.  
+**2. Repositories (Camada de Dados)**
+   - Utiliza **Spring Data JPA** para abstrair a comunicação com o banco.
+   - Gerencia queries automáticas e personalizadas (JPQL).
 
-**Camada de Dados (Repositories)**  
-   - Integração com banco de dados **MySQL** (dockerizado).  
-   - Uso de ORM/SQL DSL (Exposed, Hibernate ou equivalente).  
-
-**Documentação da API**  
-   - Feita com **Swagger/OpenAPI**, integrando com as rotas do Ktor.  
-   - Disponibiliza uma UI interativa para explorar e testar os endpoints.  
+**3. Database (Infraestrutura)**
+   - **MySQL 8** containerizado.
+   - Configurado para rodar na porta **3307** para evitar conflitos locais.
+   - Estratégia de *Naming Strategy* física para compatibilidade com Linux (Case Sensitivity).
 
 ---
 
-## Fluxo de Dados (Visão Geral)
+## Fluxo de Dados (Híbrido)
 
-[UI/Compose] <--> [ViewModel] <--> [UseCases] <--> [Repository Interface]
+O diferencial da arquitetura do LyriX é o fluxo de dados dividido:
 
-[Remote API (Ktor)] <--> [PostgreSQL Docker]
+```mermaid
+sequenceDiagram
+    participant User as Android App
+    participant Spotify as Spotify API
+    participant Lyrix as Lyrix Backend (Spring)
+    participant DB as MySQL
 
-| Swagger/OpenAPI (documentação)
-
-
-1. A UI (Compose) dispara uma ação do usuário.
-2. O ViewModel interpreta o evento e chama um UseCase.
-3. O UseCase consulta o Repositório (definido no domínio).
-4. O Repositório decide buscar no Remote (Ktor API) ou no Local (Room).
-5. No backend (Ktor), a requisição chega na rota, que aciona os serviços e consulta o PostgreSQL.
-6. O resultado percorre o caminho inverso até a UI, que exibe o estado atualizado.
-
-
-## Tecnologias Utilizadas
-
-### Mobile
-
-- Kotlin — linguagem principal.
-- Jetpack Compose — UI declarativa.
-- ViewModel + StateFlow — gerenciamento de estado.
-- Hilt (Dagger) — injeção de dependência.
-- Coroutines + Flow — operações assíncronas.
-- Room — banco de dados local.
-- Retrofit + OkHttp — consumo de APIs REST.
-- Timber — logging.
-
-
-### Backend
-
-- Kotlin + Ktor — framework para APIs.
-- PostgreSQL (Docker) — banco de dados principal.
-- Exposed (ou ORM equivalente) — acesso ao banco.
-- Swagger/OpenAPI — documentação de endpoints.
+    Note over User, Spotify: Fluxo de Leitura (Busca)
+    User->>Spotify: GET /search (Termo)
+    Spotify-->>User: JSON (Lista de Músicas e Capas)
+    
+    Note over User, Lyrix: Fluxo de Escrita (Favoritar)
+    User->>Lyrix: POST /favoritos (Dados da Música)
+    Lyrix->>DB: Salva Artista e Música (se novo)
+    Lyrix->>DB: Cria vínculo de Favorito
+    DB-->>Lyrix: Confirmação
+    Lyrix-->>User: 200 OK
