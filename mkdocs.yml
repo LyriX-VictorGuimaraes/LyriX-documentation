@@ -8,10 +8,6 @@ repo_name: LyriX-documentation
 nav:
   - Home: index.md
   - Visão Geral: overview.md
-  - Ambiente:
-    - Locker: ambiente\ambiente-locker.md
-    - Banco de Dados (Docker): ambiente\ambiente-db-docker.md
-    - BD (IDE / Conexão): ambiente\ambiente-db-ide.md
   - Arquitetura: 
     - Arquitetura: arquitetura\arquitetura.md
     - Diagrama UML: arquitetura\uml.md
