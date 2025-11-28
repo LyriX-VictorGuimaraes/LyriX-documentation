@@ -13,7 +13,6 @@ nav:
     - Diagrama UML: arquitetura\uml.md
   - Backend:
     - Repositório & Execução: backend\backend.md
-  - Entrega: entrega\pc1.md
   - Protótipo: prototipo\prototipo.md
   - Requisitos: 
       - Elicitação: 
