@@ -96,4 +96,4 @@ Armazena o histórico de buscas realizadas por um usuário.
 
 ## Conclusão
 
-Esse diagrama de classes define a **estrutura inicial** para o gerenciamento de músicas, artistas e interações dos usuários (favoritos e buscas). Ele serve de base para a implementação tanto do **backend (Ktor + PostgreSQL)** quanto do **app Android (Jetpack Compose + MVVM)**.
+Esse diagrama define a estrutura para a persistência de dados no **Backend (Spring Boot + MySQL)**. O aplicativo Android consome essa estrutura para salvar preferências, enquanto utiliza a API do Spotify para busca de dados em tempo real.
